@@ -8,20 +8,19 @@ SetWorkingDir %A_ScriptDir%  	; Ensures a consistent starting directory.
 ; ! Alt key     
 ^#d::
 
+; Detect declaration
+;------------------------------------------------------------------------------
 
 ; Clear clipboard
 clipboard=
 
 ; Select text and send Ctrl-C
 Send {ShiftDown}{End}{ShiftUp}^c{Home}
-
-
-; Wait for clipboard to fill and store value
 ClipWait
 declarationString := clipboard
 
-; If declaration happens on multiple lines, look for semicolon (;)
-if(InStr(declarationString,";") = 0 || InStr(declarationString,"{") = 0)
+; Detect end of declaration
+if(InStr(declarationString,";" = 0) && InStr(declarationString,"{") = 0)
 {	
 	downCount = 0
 	Loop 
@@ -40,22 +39,20 @@ if(InStr(declarationString,";") = 0 || InStr(declarationString,"{") = 0)
 	} until downCount = 0
 }
 
-
-; Remove tabs and multiple spaces
 declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
 
 
-; Detect opening parenthesis position
+; Detect delimiters
+;------------------------------------------------------------------------------
 openingParenPos := InStr(declarationString, "(")
 
-
-; Detect last closing parenthesis
 closingParenCount := 0
 RegExReplace(declarationString,"\)",")",closingParenCount)
 closingParenPos := InStr(declarationString, ")",false,1,closingParenCount)
 
 
 ; Detect function declaration end position (in case of const function)
+;------------------------------------------------------------------------------
 funcEndPos := 0
 if(InStr(declarationString, ";") = 0)
 {
@@ -66,41 +63,35 @@ else
 	funcEndPos := InStr(declarationString, ";")
 }
 
-;---- TO COMPLETE -------------------------------------------
-; Detect const function
+
+; Detect const function TO COMPLETE
+;------------------------------------------------------------------------------
+; isConst 
+
+; Detect template TO COMPLETE
+;------------------------------------------------------------------------------
+;templateString := ""
+;if(InStr(declarationString,"<") != 0)
+;{
+;}
 
 
-; Detect template
-templateString := ""
-if(InStr(declarationString,"<") != 0)
-{
-}
-;------------------------------------------------------------
-
-
-; Split declaration in section and store elements in arrays
+; Parse declaration
+;------------------------------------------------------------------------------
 typeAndNameString := SubStr(declarationString,1,openingParenPos-1)
 typeAndNameArray  := StrSplit(typeAndNameString,A_Space)
 parametersString  := SubStr(declarationString,openingParenPos+1,closingParenPos-openingParenPos-1)
 parametersArray   := StrSplit(parametersString,",")
 
 
-Sleep, 10
-
-debugmessage3 := "typeAndNameString = " . typeAndNameString
-					. "`nparametersString = " . parametersString
-;MsgBox % debugmessage3
-
-
-; typeAndNameArray elements variables
+; Type and name parsing
+;------------------------------------------------------------------------------
 functionName   := typeAndNameArray[typeAndNameArray.MaxIndex()]
 functionReturn := ""
 isVirtual      := 0
 isStatic       := 0
-;-- TO COMPLETE : add templates
+;-- TO COMPLETE : add templates parameters
 
-
-; Detect and parse elements of typeAndNameArray
 Loop % typeAndNameArray.MaxIndex()-1
 {
 	if(typeAndNameArray[a_index] = "virtual")
@@ -113,7 +104,7 @@ Loop % typeAndNameArray.MaxIndex()-1
 	}
 	else if(typeAndNameArray[a_index] = "extern" || typeAndNameArray[a_index] = "inline")
 	{
-		; ignore element
+		; Ignore element
 	}
 	else
 	{
@@ -125,6 +116,9 @@ Loop % typeAndNameArray.MaxIndex()-1
 	}
 }
 
+
+; Parameters parsing
+;------------------------------------------------------------------------------
 parameterNamesArray := []
 parameterTypesArray := []
 
@@ -132,29 +126,24 @@ parameterTypesArray := []
 Loop % parametersArray.MaxIndex()
 {
 	tempString := Trim(parametersArray[a_index])
+	
+	; Find last element of parameter (name)
 	spacesCount := 0
 	RegExReplace(tempString,"\s"," ",spacesCount)
-	
-	;debugMessage := "Spaces count = " . spacesCount . "`ntempString = " . tempString . "`nparametersArray[" . a_index . "] = " . parametersArray[a_index]
-	;MsgBox % debugMessage
-	
 	paramNamePos := InStr(tempString, A_Space,false,1,spacesCount)+1
 	
-	
-	;debugMessage2 := "name pushed = " . SubStr(tempString,paramNamePos) . "`ntype pushed = " . SubStr(tempString,1,paramNamePos-1)
-	;MsgBox % debugMessage2
-	
+	; Fill array
 	parameterNamesArray.Push(SubStr(tempString,paramNamePos))
 	parameterTypesArray.Push(SubStr(tempString,1,paramNamePos-1))	
 }
 
 
-
 ; Write Doxygen string
+;------------------------------------------------------------------------------
 lineCount := 0
 doxygenString := "`n///"
-				. "`n/// " . functionName
-				. "`n/// `n"
+			   . "`n/// " . functionName
+			   . "`n/// `n"
 
 Loop % parameterNamesArray.MaxIndex()
 {
@@ -171,6 +160,8 @@ if(functionReturn != "void")
 doxygenString := doxygenString . "///`n"
 
 
+; Verification and printing
+;------------------------------------------------------------------------------
 MsgBox, 1,Lazy Doxygen, %doxygenString%
 IfMsgBox, OK
 {
@@ -184,10 +175,5 @@ IfMsgBox, OK
 IfMsgBox, Cancel
 {
 }
-return
 
-
-
-
-
-
+Return
