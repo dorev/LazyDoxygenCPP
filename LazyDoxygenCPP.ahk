@@ -8,6 +8,11 @@ SetWorkingDir %A_ScriptDir%  	; Ensures a consistent starting directory.
 ; ! Alt key     
 ^#d::
 
+; Settings
+;------------------------------------------------------------------------------
+skipConfirmation := 0
+
+
 ; Detect declaration
 ;------------------------------------------------------------------------------
 
@@ -15,7 +20,7 @@ SetWorkingDir %A_ScriptDir%  	; Ensures a consistent starting directory.
 clipboard=
 
 ; Select text and send Ctrl-C
-Send {ShiftDown}{End}{ShiftUp}^c{Home}
+Send {Home}{ShiftDown}{End}{ShiftUp}^c{Home}
 ClipWait
 declarationString := clipboard
 
@@ -30,25 +35,28 @@ if(InStr(declarationString,";" = 0) && InStr(declarationString,"{") = 0)
 		Send {Down}{Home}{ShiftDown}{End}{ShiftUp}^c{Home}
 		ClipWait
 		declarationString := declarationString . clipboard
-	} until (InStr(declarationString,";") ||InStr(declarationString,"{"))
+	} until (InStr(declarationString,";") || InStr(declarationString,"{"))
 	
 	Loop
 	{
 		Send {Up}
 		downCount--
 	} until downCount = 0
+	
+	Send {Home}
 }
 
-declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
 
+declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
+declarationString := Trim(declarationString)
 
 ; Detect delimiters
 ;------------------------------------------------------------------------------
 openingParenPos := InStr(declarationString, "(")
 
 closingParenCount := 0
-RegExReplace(declarationString,"\)",")",closingParenCount)
-closingParenPos := InStr(declarationString, ")",false,1,closingParenCount)
+RegExReplace(declarationString,"\)",")", closingParenCount)
+closingParenPos := InStr(declarationString, ")", false, 1, closingParenCount)
 
 
 ; Detect function declaration end position (in case of const function)
@@ -56,7 +64,7 @@ closingParenPos := InStr(declarationString, ")",false,1,closingParenCount)
 funcEndPos := 0
 if(InStr(declarationString, ";") = 0)
 {
-	funcEndPos := InStr(declarationString,"{")
+	funcEndPos := InStr(declarationString, "{")
 }
 else
 {
@@ -64,9 +72,17 @@ else
 }
 
 
-; Detect const function TO COMPLETE
+; Detect const function
 ;------------------------------------------------------------------------------
-; isConst 
+isConst := 0
+isConstString := SubStr(declarationString, closingParenPos + 1, funcEndPos-closingParenPos-1)
+isConstString := Trim(isConstString)
+
+if(isConstString = "const")
+{
+	isConst := 1
+}
+
 
 ; Detect template TO COMPLETE
 ;------------------------------------------------------------------------------
@@ -141,7 +157,7 @@ Loop % parametersArray.MaxIndex()
 ; Write Doxygen string
 ;------------------------------------------------------------------------------
 lineCount := 0
-doxygenString := "`n///"
+doxygenString := "///"
 			   . "`n/// " . functionName
 			   . "`n/// `n"
 
@@ -160,10 +176,9 @@ if(functionReturn != "void")
 doxygenString := doxygenString . "///`n"
 
 
-; Verification and printing
+; Confirmation and printing
 ;------------------------------------------------------------------------------
-MsgBox, 1,Lazy Doxygen, %doxygenString%
-IfMsgBox, OK
+if(skipConfirmation)
 {
 	Send % doxygenString
 	Loop % lineCount + 2
@@ -172,8 +187,21 @@ IfMsgBox, OK
 	}	
 	Send, {End}
 }
-IfMsgBox, Cancel
+else
 {
+	MsgBox, 1,Lazy Doxygen, %doxygenString%
+	IfMsgBox, OK
+	{
+		Send % doxygenString
+		Loop % lineCount + 2
+		{
+			Send, {Up}
+		}	
+		Send, {End}
+	}
+	IfMsgBox, Cancel
+	{
+	}
 }
 
 Return
