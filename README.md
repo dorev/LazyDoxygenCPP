@@ -1,7 +1,7 @@
 # LazyDoxygenCPP
 AutoHotKey script generating Doxygen comments above C++ function declaration. Uses keyboard commands and clipboard to parse function declaration and then type a pre-filled Doxygen comment.
 
-## Requirements
+## Install
 * [Get Autohotkey](https://autohotkey.com/download/ahk.zip)
 * Run script
 
