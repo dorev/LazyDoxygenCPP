@@ -25,7 +25,7 @@ ClipWait
 declarationString := clipboard
 
 ; Detect end of declaration
-if(InStr(declarationString,";" = 0) && InStr(declarationString,"{") = 0)
+if(InStr(declarationString,";") = 0 && InStr(declarationString,"{") = 0)
 {	
 	downCount = 0
 	Loop 
@@ -42,13 +42,12 @@ if(InStr(declarationString,";" = 0) && InStr(declarationString,"{") = 0)
 		Send {Up}
 		downCount--
 	} until downCount = 0
-	
-	Send {Home}
 }
 
 
 declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
 declarationString := Trim(declarationString)
+
 
 ; Detect delimiters
 ;------------------------------------------------------------------------------
@@ -142,15 +141,29 @@ parameterTypesArray := []
 Loop % parametersArray.MaxIndex()
 {
 	tempString := Trim(parametersArray[a_index])
+	lastTempStringChar := ""
+	StringRight, lastTempStringChar, tempString, 1
 	
-	; Find last element of parameter (name)
-	spacesCount := 0
-	RegExReplace(tempString,"\s"," ",spacesCount)
-	paramNamePos := InStr(tempString, A_Space,false,1,spacesCount)+1
-	
-	; Fill array
-	parameterNamesArray.Push(SubStr(tempString,paramNamePos))
-	parameterTypesArray.Push(SubStr(tempString,1,paramNamePos-1))	
+	; Detect callback, check if last param char is ")"
+	if(lastTempStringChar = ")")
+	{
+		; Identify delimiters
+		;callbackNameOpeningParenPos
+		;callbackNameClosingParenPos
+		;callbackParamOpeningParenPos
+		;callbackParamClosingParenPos
+	}
+	else
+	{
+		; Find last element of parameter (name)
+		spacesCount := 0
+		RegExReplace(tempString,"\s"," ",spacesCount)
+		paramNamePos := InStr(tempString, A_Space,false,1,spacesCount)+1
+		
+		; Fill array
+		parameterNamesArray.Push(SubStr(tempString,paramNamePos))
+		parameterTypesArray.Push(SubStr(tempString,1,paramNamePos-1))	
+	}
 }
 
 
