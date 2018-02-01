@@ -15,7 +15,6 @@ skipConfirmation := 0
 
 ; Detect declaration
 ;------------------------------------------------------------------------------
-
 ; Clear clipboard
 clipboard=
 
@@ -44,11 +43,10 @@ if(InStr(declarationString,";") = 0 && InStr(declarationString,"{") = 0)
 	} until downCount = 0
 }
 
-declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
-declarationString := Trim(declarationString)
+declarationString := Trim(RegExReplace(declarationString, "[\s\t]+", " "))
 
 
-; Detect delimiters
+; Identify delimiters
 ;------------------------------------------------------------------------------
 openingParenPos := InStr(declarationString, "(")
 
@@ -56,10 +54,11 @@ closingParenCount := 0
 RegExReplace(declarationString,"\)",")", closingParenCount)
 closingParenPos := InStr(declarationString, ")", false, 1, closingParenCount)
 
+typeAndNameString := SubStr(declarationString,1,openingParenPos-1)
+parametersString  := SubStr(declarationString,openingParenPos+1,closingParenPos-openingParenPos-1)
 
 ; Detect function declaration end position (in case of const function)
 ;------------------------------------------------------------------------------
-funcEndPos := 0
 if(InStr(declarationString, ";") = 0)
 {
 	funcEndPos := InStr(declarationString, "{")
@@ -73,8 +72,7 @@ else
 ; Detect const function
 ;------------------------------------------------------------------------------
 isConst := 0
-isConstString := SubStr(declarationString, closingParenPos + 1, funcEndPos-closingParenPos-1)
-isConstString := Trim(isConstString)
+isConstString := Trim(SubStr(declarationString, closingParenPos + 1, funcEndPos-closingParenPos-1))
 
 if(isConstString = "const")
 {
@@ -82,29 +80,34 @@ if(isConstString = "const")
 }
 
 
-; Detect template TO COMPLETE
+; Detect template
 ;------------------------------------------------------------------------------
-;templateString := ""
-;if(InStr(declarationString,"<") != 0)
-;{
-;}
-
-
-; Parse declaration
-;------------------------------------------------------------------------------
-typeAndNameString := SubStr(declarationString,1,openingParenPos-1)
-typeAndNameArray  := StrSplit(typeAndNameString,A_Space)
-parametersString  := SubStr(declarationString,openingParenPos+1,closingParenPos-openingParenPos-1)
-parametersArray   := StrSplit(parametersString,",")
+isTemplate := 0
+if(InStr(declarationString,"<") != 0)
+{
+	; Identify delimiters
+	templateOpeningPos := InStr(declarationString,"<")
+	
+	; In the case there is more than one embedded template
+	greaterThanSignCount := 0
+	RegExReplace(declarationString,">",">", greaterThanSignCount)
+	templateClosingPos := InStr(declarationString, ">", false, 1, greaterThanSignCount)
+	
+	templateString := Trim(SubStr(declarationString,templateOpeningPos+1, templateClosingPos-templateOpeningPos-1))
+	isTemplate := 1
+	
+	typeAndNameString := Trim(SubStr(typeAndNameString,templateClosingPos+1))
+}
 
 
 ; Type and name parsing
 ;------------------------------------------------------------------------------
+typeAndNameArray  := StrSplit(typeAndNameString,A_Space)
+parametersArray   := StrSplit(parametersString,",")
 functionName   := typeAndNameArray[typeAndNameArray.MaxIndex()]
 functionReturn := ""
 isVirtual      := 0
 isStatic       := 0
-;-- TO COMPLETE : add templates parameters
 
 Loop % typeAndNameArray.MaxIndex()-1
 {
@@ -143,14 +146,24 @@ Loop % parametersArray.MaxIndex()
 	lastTempStringChar := ""
 	StringRight, lastTempStringChar, tempString, 1
 	
-	; Detect callback, check if last param char is ")"
+	; Detect C++ 2005 callback, check if last param char is ")"
 	if(lastTempStringChar = ")")
-	{
+	{	
 		; Identify delimiters
-		;callbackNameOpeningParenPos
-		;callbackNameClosingParenPos
-		;callbackParamOpeningParenPos
-		;callbackParamClosingParenPos
+		callbackNameOpeningParenPos  := InStr(tempString,"(")
+		callbackNameClosingParenPos  := InStr(tempString,")")
+		callbackParamOpeningParenPos := InStr(tempString,"(", false, 1, 2)
+		callbackParamClosingParenPos := InStr(tempString,")", false, 1, 2)
+		
+		; Retrieve elements
+		callbackReturn := Trim(SubStr(tempString, 1, callbackNameOpeningParenPos-1))
+		callbackName   := Trim(SubStr(tempString, callbackNameOpeningParenPos+1, callbackNameClosingParenPos-callbackNameOpeningParenPos-1))
+		callbackName   := Trim(SubStr(callbackName,InStr(callbackName,"*")+1))
+		callbackParams := Trim(SubStr(tempString, callbackParamOpeningParenPos+1, callbackParamClosingParenPos-callbackParamOpeningParenPos-1))
+
+		; Fill array
+		parameterNamesArray.Push(callbackName)
+		parameterTypesArray.Push(callbackReturn . "(" . callbackParams . ")")
 	}
 	else
 	{
@@ -171,7 +184,13 @@ Loop % parametersArray.MaxIndex()
 lineCount := 0
 doxygenString := "///"
 			   . "`n/// " . functionName
-			   . "`n/// `n"
+			   
+if(isTemplate)
+{
+	doxygenString := doxygenString . " (template)"
+}			   
+
+doxygenString := doxygenString . "`n/// `n"
 
 Loop % parameterNamesArray.MaxIndex()
 {
@@ -181,7 +200,7 @@ Loop % parameterNamesArray.MaxIndex()
 
 if(functionReturn != "void")
 {
-	doxygenString := doxygenString . "/// @returns " . functionReturn . " - `n"
+	doxygenString := doxygenString . "/// @return " . functionReturn . " - `n"
 	lineCount++
 }
 
