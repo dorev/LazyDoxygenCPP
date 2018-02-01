@@ -44,7 +44,6 @@ if(InStr(declarationString,";") = 0 && InStr(declarationString,"{") = 0)
 	} until downCount = 0
 }
 
-
 declarationString := RegExReplace(declarationString, "[\s\t]+", " ") 
 declarationString := Trim(declarationString)
 
@@ -182,7 +181,7 @@ Loop % parameterNamesArray.MaxIndex()
 
 if(functionReturn != "void")
 {
-	doxygenString := doxygenString . "/// @returns `n"
+	doxygenString := doxygenString . "/// @returns " . functionReturn . " - `n"
 	lineCount++
 }
 
