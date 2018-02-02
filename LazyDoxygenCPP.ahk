@@ -34,6 +34,20 @@ if(InStr(declarationString,";") = 0 && InStr(declarationString,"{") = 0)
 		Send {Down}{Home}{ShiftDown}{End}{ShiftUp}^c{Home}
 		ClipWait
 		declarationString := declarationString . clipboard
+		
+		; In case no end of declaration is detected after 10 lines
+		if(downCount > 10)
+		{
+			MsgBox, 48,LazyDoxygenCPP, No end of declaration detected, validate presence of `; or {
+			Loop
+			{
+				Send {Up}
+				downCount--
+			} until downCount = 0
+			
+			return
+		}
+		
 	} until (InStr(declarationString,";") || InStr(declarationString,"{"))
 	
 	Loop
@@ -220,7 +234,7 @@ if(skipConfirmation)
 }
 else
 {
-	MsgBox, 1,Lazy Doxygen, %doxygenString%
+	MsgBox, 1,LazyDoxygenCPP, %doxygenString%
 	IfMsgBox, OK
 	{
 		Send % doxygenString
