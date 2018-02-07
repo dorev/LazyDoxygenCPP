@@ -33,7 +33,7 @@ if(InStr(declarationString,";") = 0 && InStr(declarationString,"{") = 0)
 		clipboard=
 		Send {Down}{Home}{ShiftDown}{End}{ShiftUp}^c{Home}
 		ClipWait
-		declarationString := declarationString . clipboard
+		declarationString := declarationString . " " . clipboard
 		
 		; In case no end of declaration is detected after 10 lines
 		if(downCount > 10)
